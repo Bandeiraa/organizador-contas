@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Organizador de Contas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header__brand">
+        <span class="logo" aria-hidden="true">◆</span>
+        <div>
+          <h1>Organizador de Contas</h1>
+          <p class="tagline">Renda, despesas fixas e pontuais num só lugar</p>
+        </div>
+      </div>
+      <div class="header__actions">
+        <button type="button" class="btn btn--ghost" id="btnExport" title="Guardar cópia dos dados">Exportar JSON</button>
+        <label class="btn btn--ghost btn--file">
+          Importar JSON
+          <input type="file" id="fileImport" accept=".json,application/json" hidden />
+        </label>
+      </div>
+    </header>
+
+    <nav class="app-tabs" role="tablist" aria-label="Seções do organizador">
+      <button type="button" class="app-tabs__tab is-active" role="tab" aria-selected="true" aria-controls="tabPanelMain" id="tabBtnMain" data-tab="main">Visão geral</button>
+      <button type="button" class="app-tabs__tab" role="tab" aria-selected="false" aria-controls="tabPanelDue" id="tabBtnDue" data-tab="due">Contas vencendo</button>
+      <button type="button" class="app-tabs__tab" role="tab" aria-selected="false" aria-controls="tabPanelInvest" id="tabBtnInvest" data-tab="invest">Investir &amp; reserva</button>
+    </nav>
+
+    <div id="tabPanelMain" class="tab-panel" role="tabpanel" aria-labelledby="tabBtnMain">
+
+    <section class="panel panel--month" aria-labelledby="month-heading">
+      <div class="month-bar">
+        <h2 id="month-heading" class="panel__title panel__title--inline">Mês em foco</h2>
+        <div class="month-bar__controls">
+          <button type="button" class="btn btn--ghost btn--icon" id="btnPrevMonth" aria-label="Mês anterior">←</button>
+          <span class="month-bar__label" id="monthLabel" aria-live="polite">—</span>
+          <button type="button" class="btn btn--ghost btn--icon" id="btnNextMonth" aria-label="Próximo mês">→</button>
+          <button type="button" class="btn btn--ghost btn--small" id="btnTodayMonth">Hoje</button>
+        </div>
+      </div>
+      <p class="hint month-bar__hint">Pagamentos marcados e renda específica do mês valem só para o período selecionado.</p>
+    </section>
+
+    <section class="panel panel--income" aria-labelledby="income-heading">
+      <h2 id="income-heading" class="panel__title">Fontes de renda</h2>
+      <p class="hint">Some todas as entradas líquidas (salário, freelas, aluguéis etc.). Use “Renda só neste mês” para meses diferentes do padrão.</p>
+      <div id="incomeSourcesList" class="dynamic-rows"></div>
+      <button type="button" class="btn btn--ghost btn--small" id="btnAddIncomeSource">+ Adicionar fonte</button>
+      <div class="income-total">
+        <span>Total mensal (padrão)</span>
+        <strong id="incomeTotalDefault">R$ 0,00</strong>
+      </div>
+      <div class="panel panel--nested" id="monthIncomePanel">
+        <label class="checkbox-inline checkbox-inline--block">
+          <input type="checkbox" id="useMonthIncomeOverride" />
+          Usar fontes de renda diferentes só em <strong id="overrideMonthLabel">este mês</strong>
+        </label>
+        <div id="monthIncomeEditor" class="is-hidden">
+          <div id="monthIncomeSourcesList" class="dynamic-rows"></div>
+          <button type="button" class="btn btn--ghost btn--small" id="btnAddMonthIncomeSource">+ Fonte neste mês</button>
+          <p class="hint small">Ao marcar, o resumo do mês usa só estes valores; outros meses continuam com o padrão acima.</p>
+        </div>
+      </div>
+      <div class="income-row">
+        <label class="field">
+          <span class="field__label">Meta de poupança mensal global (R$)</span>
+          <input type="number" id="savingsGoal" min="0" step="0.01" placeholder="Opcional" inputmode="decimal" />
+        </label>
+        <label class="field">
+          <span class="field__label">Meta só neste mês (R$)</span>
+          <input type="number" id="savingsGoalMonth" min="0" step="0.01" placeholder="Herda global se vazio" inputmode="decimal" />
+        </label>
+      </div>
+    </section>
+
+    <section class="stats" aria-label="Resumo financeiro">
+      <article class="stat-card">
+        <span class="stat-card__label">Receita do mês</span>
+        <strong class="stat-card__value" id="statIncome">R$ 0,00</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Despesas recorrentes</span>
+        <strong class="stat-card__value stat-card__value--out" id="statRecurring">R$ 0,00</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Despesas temporárias (ativas)</span>
+        <strong class="stat-card__value stat-card__value--out" id="statTemporary">R$ 0,00</strong>
+      </article>
+      <article class="stat-card stat-card--highlight">
+        <span class="stat-card__label">Saldo estimado no mês</span>
+        <strong class="stat-card__value" id="statBalance">R$ 0,00</strong>
+      </article>
+    </section>
+
+    <section class="panel panel--charts" aria-labelledby="charts-heading">
+      <div class="panel__head panel__head--charts">
+        <h2 id="charts-heading" class="panel__title">Visão mês a mês</h2>
+        <label class="field field--inline">
+          <span class="field__label sr-only">Meses no gráfico</span>
+          <select id="chartHorizon">
+            <option value="6">Próximos 6 meses</option>
+            <option value="12" selected>Próximos 12 meses</option>
+            <option value="24">Próximos 24 meses</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint chart-hint">Barras empilhadas por <strong>categoria</strong> (despesa prevista; recorrentes já pagas no mês não entram). Linhas à direita: <strong>receita</strong> (azul) e <strong>total em contas</strong> (amarelo tracejado) no mesmo mês.</p>
+      <div class="chart-wrap">
+        <canvas id="barChartFlow" aria-label="Gráfico receita e despesas por mês e categoria"></canvas>
+      </div>
+      <div class="projection-summary">
+        <div class="projection-summary__item">
+          <span class="projection-summary__label">Débito projetado total (período)</span>
+          <strong class="projection-summary__value projection-summary__value--out" id="statFutureDebit">R$ 0,00</strong>
+          <span class="projection-summary__hint">Soma das despesas esperadas em cada mês do gráfico (a partir do mês em foco).</span>
+        </div>
+        <div class="projection-summary__item">
+          <span class="projection-summary__label">Receita projetada total (período)</span>
+          <strong class="projection-summary__value" id="statFutureCredit">R$ 0,00</strong>
+          <span class="projection-summary__hint">Soma mês a mês: onde não há “renda só neste mês”, usa as fontes padrão.</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="layout">
+      <main class="main">
+        <section class="panel">
+          <div class="panel__head">
+            <h2 class="panel__title">Nova conta ou despesa</h2>
+          </div>
+          <form id="accountForm" class="form-grid">
+            <label class="field field--full">
+              <span class="field__label">Nome</span>
+              <input type="text" id="accName" required maxlength="120" placeholder="Ex.: Aluguel, Netflix, IR" />
+            </label>
+            <label class="field">
+              <span class="field__label">Tipo</span>
+              <select id="accType" required>
+                <option value="recorrente">Recorrente (todo mês)</option>
+                <option value="temporaria">Temporária (prazo ou parcela única)</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field__label">Valor (R$)</span>
+              <input type="number" id="accAmount" required min="0" step="0.01" placeholder="0,00" />
+            </label>
+            <label class="field">
+              <span class="field__label">Categoria</span>
+              <select id="accCategory">
+                <option value="moradia">Moradia</option>
+                <option value="servicos">Serviços &amp; assinaturas</option>
+                <option value="transporte">Transporte</option>
+                <option value="alimentacao">Alimentação</option>
+                <option value="saude">Saúde</option>
+                <option value="educacao">Educação</option>
+                <option value="impostos">Impostos &amp; taxas</option>
+                <option value="dividas">Dívidas</option>
+                <option value="outros">Outros</option>
+              </select>
+            </label>
+            <div id="fieldRecurring" class="field-group">
+              <label class="field">
+                <span class="field__label">Dia do vencimento</span>
+                <input type="number" id="accDueDay" min="1" max="31" placeholder="1–31" />
+              </label>
+            </div>
+            <div id="fieldTemporary" class="field-group is-hidden">
+              <label class="field">
+                <span class="field__label">Data limite / fim</span>
+                <input type="date" id="accEndDate" />
+              </label>
+            </div>
+            <label class="field field--full">
+              <span class="field__label">Parcelas restantes (opcional)</span>
+              <input type="number" id="accParcelas" min="0" step="1" placeholder="Só para planos sem data final clara" />
+            </label>
+            <p class="hint field--full small" id="accParcelasHint">Com <strong>temporária + data limite</strong>, o número de parcelas é calculado automaticamente (vencimento no mesmo dia do mês até a data final). Marcar “paga no mês” não altera esse número. Para outros casos, preencha parcelas e cada pagamento confirmado subtrai 1.</p>
+            <label class="field field--full">
+              <span class="field__label">Observações</span>
+              <input type="text" id="accNotes" maxlength="200" placeholder="Opcional" />
+            </label>
+            <div class="form-actions field--full">
+              <button type="submit" class="btn btn--primary" id="btnSubmit">Adicionar</button>
+              <button type="button" class="btn btn--ghost is-hidden" id="btnCancelEdit">Cancelar edição</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="panel__head panel__head--filters">
+            <h2 class="panel__title">Suas contas</h2>
+            <div class="filters">
+              <label class="sr-only" for="filterType">Filtrar por tipo</label>
+              <select id="filterType">
+                <option value="all">Todos os tipos</option>
+                <option value="recorrente">Só recorrentes</option>
+                <option value="temporaria">Só temporárias</option>
+              </select>
+              <label class="sr-only" for="filterCategory">Filtrar por categoria</label>
+              <select id="filterCategory">
+                <option value="all">Todas categorias</option>
+              </select>
+              <label class="checkbox-inline">
+                <input type="checkbox" id="hidePaid" />
+                Ocultar já pagas neste mês
+              </label>
+            </div>
+          </div>
+          <ul id="accountList" class="account-list"></ul>
+          <p id="emptyState" class="empty-state">Nenhuma conta ainda. Adicione acima para começar.</p>
+        </section>
+      </main>
+
+      <aside class="sidebar">
+        <section class="panel panel--compact">
+          <h2 class="panel__title">Próximos vencimentos</h2>
+          <ul id="upcomingList" class="mini-list"></ul>
+          <p id="upcomingEmpty" class="muted small">Adicione contas recorrentes com dia de vencimento para ver alertas.</p>
+        </section>
+
+        <section class="panel panel--compact panel--ideas">
+          <h2 class="panel__title">Ideias para melhor controle</h2>
+          <ul class="ideas-list">
+            <li><strong>Revisão semanal:</strong> 15 minutos para conferir o que vence na semana.</li>
+            <li><strong>Reserva de emergência:</strong> meta de 3–6 meses de despesas essenciais.</li>
+            <li><strong>Separar contas:</strong> uma conta só para assinaturas evita “vazamentos”.</li>
+            <li><strong>Renegociação:</strong> anote na observação datas para rever telefone, internet e seguros.</li>
+            <li><strong>Exportar mensalmente:</strong> use Exportar JSON como backup da sua planilha de vida.</li>
+          </ul>
+        </section>
+      </aside>
+    </div>
+
+    </div>
+
+    <div id="tabPanelDue" class="tab-panel is-hidden" role="tabpanel" aria-labelledby="tabBtnDue">
+      <section class="panel">
+        <h2 class="panel__title">Contas vencendo</h2>
+        <p class="hint">Lista contas com vencimento nos próximos dias (dia fixo para recorrentes ou data limite para temporárias). Usa a <strong>data de hoje</strong> como referência.</p>
+        <div class="segmented" role="group" aria-label="Prazo de vencimento">
+          <button type="button" class="segmented__btn" data-due-days="1">1 dia</button>
+          <button type="button" class="segmented__btn" data-due-days="7">7 dias</button>
+          <button type="button" class="segmented__btn" data-due-days="14">14 dias</button>
+        </div>
+        <ul id="dueSoonList" class="account-list due-soon-list"></ul>
+        <p id="dueSoonEmpty" class="empty-state is-hidden">Nenhuma conta com vencimento neste intervalo.</p>
+      </section>
+    </div>
+
+    <div id="tabPanelInvest" class="tab-panel is-hidden" role="tabpanel" aria-labelledby="tabBtnInvest">
+      <section class="panel">
+        <h2 class="panel__title">Investimento × reserva de emergência</h2>
+        <p class="hint">Use as <strong>% do sobra mensal</strong> abaixo com base na projeção dos próximos meses (receita − despesas − meta de poupança em cada mês). A reserva é a <strong>Caixinha Nubank</strong> (CDI abaixo); o investimento segue o cenário que você marcar.</p>
+
+        <div class="panel panel--nested invest-sim">
+          <h3 class="panel__title panel__title--small">Simulação (próximos meses)</h3>
+          <p class="hint small">Para cada mês usa receita e despesas <strong>projetadas</strong> (como no gráfico), menos a meta de poupança daquele mês. Só entra o que sobrar <strong>positivo</strong>. A <strong>reserva de emergência</strong> é sempre a <strong>Caixinha Nubank (~100% CDI)</strong>: capitaliza com a taxa <strong>% a.a. CDI</strong> abaixo e juros compostos mensais (mesmo que você desmarque “Caixinha” só para o gráfico de investimento). Os outros cenários valem apenas para o aporte de investimento.</p>
+          <div class="form-grid sim-pct-row">
+            <label class="field">
+              <span class="field__label">% do sobra mensal → reserva de emergência</span>
+              <input type="number" id="simReservePct" min="0" max="100" step="1" value="20" />
+            </label>
+            <label class="field">
+              <span class="field__label">% do sobra mensal → investimento</span>
+              <input type="number" id="simInvestPct" min="0" max="100" step="1" value="15" />
+            </label>
+          </div>
+          <p class="hint small is-hidden" id="simPctWarning"></p>
+
+          <h4 class="sim-subtitle">Cenários de rendimento (anual) — marque os que deseja comparar</h4>
+          <div class="sim-scenarios">
+            <div class="sim-scenario-row">
+              <label class="checkbox-inline"><input type="checkbox" id="simUseNubank" checked /> Caixinha / liquidez (~100% CDI — também a reserva emergência)</label>
+              <label class="field field--tight"><span class="field__label sr-only">Taxa a.a. CDI</span><input type="number" id="simRateNubank" min="0" max="50" step="0.1" value="13" /> % a.a.</label>
+            </div>
+            <div class="sim-scenario-row">
+              <label class="checkbox-inline"><input type="checkbox" id="simUseRF" checked /> Renda fixa (prefixado / IPCA+ referência)</label>
+              <label class="field field--tight"><span class="field__label sr-only">Taxa a.a. RF</span><input type="number" id="simRateRF" min="0" max="50" step="0.1" value="12.5" /> % a.a.</label>
+            </div>
+            <div class="sim-scenario-row">
+              <label class="checkbox-inline"><input type="checkbox" id="simUsePoup" /> Poupança (referência)</label>
+              <label class="field field--tight"><span class="field__label sr-only">Taxa a.a. poupança</span><input type="number" id="simRatePoup" min="0" max="30" step="0.1" value="6" /> % a.a.</label>
+            </div>
+          </div>
+
+          <h4 class="sim-subtitle">Evolução no gráfico</h4>
+          <p class="hint small">Mesmo estilo da visão geral: <strong>barras</strong> = aporte no mês; <strong>linhas</strong> = juros no mês e saldo total (reserva na Caixinha ou investimento no cenário escolhido). Troque o horizonte e o cenário de investimento abaixo.</p>
+          <div class="sim-chart-toolbar">
+            <label class="field field--inline">
+              <span class="field__label">Período</span>
+              <select id="simChartHorizon">
+                <option value="6">Próximos 6 meses</option>
+                <option value="12" selected>Próximos 12 meses</option>
+                <option value="24">Próximos 24 meses</option>
+              </select>
+            </label>
+            <label class="field field--inline">
+              <span class="field__label">O que exibir</span>
+              <select id="simChartView">
+                <option value="invest">Investimento (aporte, juros, total)</option>
+                <option value="reserve">Reserva – Caixinha Nubank (~100% CDI)</option>
+              </select>
+            </label>
+            <label class="field field--inline is-hidden" id="simChartScenarioWrap">
+              <span class="field__label">Cenário de rendimento</span>
+              <select id="simChartScenario"></select>
+            </label>
+          </div>
+          <div class="chart-wrap chart-wrap--sim">
+            <canvas id="simChartCanvas" aria-label="Gráfico da simulação de investimento e reserva"></canvas>
+          </div>
+          <div id="simCompoundTotals" class="sim-compound-totals" aria-live="polite"></div>
+        </div>
+      </section>
+    </div>
+
+    <footer class="footer">
+      <p>Os dados ficam apenas neste navegador (armazenamento local). Faça exportações periódicas para não perder informação.</p>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js" defer></script>
+  <script src="js/app.js" defer></script>
+</body>
+</html>
